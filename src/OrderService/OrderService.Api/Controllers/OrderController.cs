@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace OrderService.Api.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/orders")]
     public class OrderController : ControllerBase
     {
         private readonly IOrderServices _service;
