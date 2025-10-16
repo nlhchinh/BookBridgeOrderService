@@ -9,11 +9,11 @@ using OrderService.Infracstructure.DBContext;
 
 #nullable disable
 
-namespace OrderService.Infracstructure.Migrations
+namespace OrderService.Infrastructure.Migrations
 {
     [DbContext(typeof(OrderDbContext))]
-    [Migration("20251010120329_InitialOrderMigration")]
-    partial class InitialOrderMigration
+    [Migration("20251016165003_InitialPostgreSetup")]
+    partial class InitialPostgreSetup
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

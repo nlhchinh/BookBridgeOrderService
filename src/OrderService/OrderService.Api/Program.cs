@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using OrderService.Application.Interface;
 using OrderService.Application.Services;
+using OrderService.Domain.Entities;
 using OrderService.Infracstructure.DBContext;
 using OrderService.Infracstructure.Repositories;
 
@@ -12,7 +13,7 @@ var configuration = builder.Configuration;
 // Add services to the container.
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+//Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -77,6 +78,29 @@ builder.Services.AddAuthentication(options =>
 });
 
 var app = builder.Build();
+
+// Tự động áp dụng migrations VÀ XỬ LÝ LỖI - Cách 2
+// Tự động áp dụng migrations VÀ XỬ LÝ LỖI - Cách 2
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider; // <-- chỉ tồn tại trong scope này
+    try
+    {
+        // Lấy DbContext đã đăng ký
+        var context = services.GetRequiredService<OrderDbContext>();
+
+        // Tự động áp dụng migration
+        context.Database.Migrate();
+        // -------------------------------
+        Console.WriteLine("Database migration applied successfully.");
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred during database migration.");
+    }
+}
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

@@ -8,7 +8,7 @@ using OrderService.Infracstructure.DBContext;
 
 #nullable disable
 
-namespace OrderService.Infracstructure.Migrations
+namespace OrderService.Infrastructure.Migrations
 {
     [DbContext(typeof(OrderDbContext))]
     partial class OrderDbContextModelSnapshot : ModelSnapshot
