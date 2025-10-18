@@ -12,8 +12,8 @@ using OrderService.Infracstructure.DBContext;
 namespace OrderService.Infrastructure.Migrations
 {
     [DbContext(typeof(OrderDbContext))]
-    [Migration("20251018181626_InitialPostgreSetup")]
-    partial class InitialPostgreSetup
+    [Migration("20251018192826_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
