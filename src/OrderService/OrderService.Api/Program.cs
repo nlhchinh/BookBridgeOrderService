@@ -29,7 +29,16 @@ builder.Services.AddSwaggerGen();
 
 
 builder.Services.AddDbContext<OrderDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("OrderServiceConnection")));
+{
+    options.UseNpgsql(builder.Configuration.GetConnectionString("OrderServiceConnection"));
+
+    // Chỉ cần một LogLevel
+    options.LogTo(Console.WriteLine, LogLevel.Information);
+
+    options.EnableSensitiveDataLogging();
+});
+
+
 
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
