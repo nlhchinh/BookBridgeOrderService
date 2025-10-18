@@ -5,13 +5,12 @@ namespace OrderService.Application.Models
 {
     public class OrderCreateRequest
     {
-        public Guid CustomerId { get; set; }
+        // CustomerId được lấy từ Token/Path, nên không cần [Required] trong Body DTO
 
+        public Guid CustomerId { get; set; }
         public string? CustomerEmail { get; set; }
 
-        [Required(ErrorMessage = "Cửa hàng là bắt buộc.")]
-        public int BookstoreId { get; set; }
-
+        // Thông tin chung cho tất cả đơn hàng
         [Required, Phone]
         public string CustomerPhoneNumber { get; set; }
 
@@ -23,7 +22,9 @@ namespace OrderService.Application.Models
 
         public PaymentProvider? PaymentProvider { get; set; }
 
-        [Required, MinLength(1)]
-        public List<CartItemDto> OrderItems { get; set; } = new();
+        // Danh sách các cửa hàng (Multi-Store)
+        [Required(ErrorMessage = "Phải có ít nhất một cửa hàng trong checkout.")]
+        [MinLength(1)]
+        public List<StoreCheckoutDto> Stores { get; set; } = new();
     }
 }
