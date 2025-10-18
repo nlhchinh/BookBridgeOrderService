@@ -7,19 +7,19 @@ namespace OrderService.Application.Services.Payment
     public class MockPaymentService : IPaymentService
     {
         // Mock provider: generate a fake URL representing QR or payment page
-        public Task<PaymentResult> InitiatePaymentAsync(Order order)
+        public Task<PaymentResult> InitiatePaymentAsync(PaymentTransaction transaction)
         {
-            // Create a transaction id
-            var tx = $"TX-{Guid.NewGuid():N}";
-            // Simulate a QR url or payment link
-            var paymentUrl = $"https://pay.fake/{tx}?amount={order.TotalPrice}&order={order.OrderNumber}";
-            return Task.FromResult(new PaymentResult
+            // Giả lập logic khởi tạo thanh toán thành công
+            var mockResult = new PaymentResult
             {
                 Success = true,
-                PaymentUrl = paymentUrl,
-                TransactionId = tx,
-                Message = "Mock payment created"
-            });
+                // Sử dụng TotalAmount từ PaymentTransaction để tạo ID/URL giả
+                TransactionId = $"MOCK_TX_{transaction.TotalAmount}_{DateTime.UtcNow.Ticks}",
+                PaymentUrl = "https://mock-payment-gateway.com/pay/" + transaction.Id.ToString(),
+                Message = "Mock payment initiated successfully."
+            };
+
+            return Task.FromResult(mockResult);
         }
 
         public Task<PaymentResult> HandleCallbackAsync(string transactionId, IDictionary<string, string> payload)
