@@ -1,24 +1,26 @@
 using OrderService.Application.Models;
 using OrderService.Domain.Entities;
 using System.Threading.Tasks;
+using System.Collections.Generic; // Cần thiết
 
 namespace OrderService.Application.Interface
 {
     public interface IPaymentService
     {
         /// <summary>
-        /// Initiate payment for order: return paymentUrl + txId
+        /// Initiate payment for a transaction: return paymentUrl + txId
+        /// (Sửa để nhận PaymentTransaction thay vì Order)
         /// </summary>
-        Task<PaymentResult> InitiatePaymentAsync(Order order);
+        Task<PaymentResult> InitiatePaymentAsync(PaymentTransaction paymentTransaction); // <- ĐÃ SỬA
 
         /// <summary>
         /// Verify or handle provider callback; returns whether payment succeeded
         /// </summary>
         Task<PaymentResult> HandleCallbackAsync(string transactionId, IDictionary<string, string> payload);
-        // THÊM: Kiểm tra trạng thái giao dịch
+
         /// <summary>
         /// Check transaction status directly with Payment Provider (e.g., polling after QR scan).
         /// </summary>
-        Task<bool> CheckTransactionStatusAsync(string transactionId); // THAY ĐỔI
+        Task<bool> CheckTransactionStatusAsync(string transactionId);
     }
 }

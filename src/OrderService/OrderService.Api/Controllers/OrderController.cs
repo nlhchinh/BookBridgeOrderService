@@ -13,31 +13,29 @@ namespace OrderService.Api.Controllers
     public class OrderController : BaseApiController
     {
         private readonly IOrderServices _service;
-        private readonly IPaymentService _paymentService;
 
-        public OrderController(IOrderServices service, IPaymentService paymentService)
+        public OrderController(IOrderServices service)
         {
             _service = service;
-            _paymentService = paymentService;
         }
 
         // ==========================
-        // 🔹 Helper methods
+        // 🔹 Helper methods (Giữ nguyên)
         // ==========================
         private Guid GetCustomerId()
         {
             var id = User.FindFirstValue(ClaimTypes.NameIdentifier)
-                  ?? User.FindFirstValue("nameid");
+                 ?? User.FindFirstValue("nameid");
             return Guid.TryParse(id, out var guid) ? guid : Guid.Empty;
         }
 
-        private string GetEmail() =>
+        private string GetCustomerEmail() =>
             User.FindFirstValue(ClaimTypes.Email)
             ?? User.FindFirstValue("email")
             ?? string.Empty;
 
         // ==========================
-        // 🔹 GET: Danh sách đơn hàng
+        // 🔹 GET, POST /create (Giữ nguyên)
         // ==========================
         [HttpGet("list")]
         public async Task<IActionResult> GetAll(int page = 1, int pageSize = 10)
@@ -46,7 +44,6 @@ namespace OrderService.Api.Controllers
             return Ok(result);
         }
 
-        // 🔹 GET: Chi tiết đơn hàng
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetById(Guid id)
         {
@@ -54,7 +51,6 @@ namespace OrderService.Api.Controllers
             return order is null ? NotFound() : Ok(order);
         }
 
-        // 🔹 GET: Đơn hàng theo khách hàng
         [HttpGet("by-customer/{customerId:guid}")]
         public async Task<IActionResult> GetByCustomer(Guid customerId, int page = 1, int pageSize = 10)
         {
@@ -62,9 +58,6 @@ namespace OrderService.Api.Controllers
             return Ok(result);
         }
 
-        // ==========================
-        // 🔹 POST: Tạo đơn hàng thủ công
-        // ==========================
         [HttpPost("create")]
         public async Task<IActionResult> Create([FromBody] OrderCreateRequest request)
         {
@@ -76,14 +69,11 @@ namespace OrderService.Api.Controllers
         [HttpPost("checkout/create")]
         public async Task<IActionResult> CreateFromCart([FromBody] OrderCreateRequest request)
         {
-            // Lấy thông tin người dùng từ Token
             var customerId = GetCustomerId();
             var customerEmail = GetCustomerEmail();
             var accessToken = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
 
-            // Kiểm tra thông tin người dùng được lấy từ Token/Claim
             if (customerId == Guid.Empty || string.IsNullOrEmpty(customerEmail))
-                // Trả về 401 Unauthorized nếu thông tin chính không có trong Token
                 return Unauthorized("Không tìm thấy thông tin định danh (ID/Email) của khách hàng trong token.");
 
             if (string.IsNullOrEmpty(accessToken))
@@ -91,47 +81,68 @@ namespace OrderService.Api.Controllers
 
             try
             {
-                // Gắn email & id vào request (để đảm bảo không bị giả mạo từ client)
                 request.CustomerId = customerId;
                 request.CustomerEmail = customerEmail;
 
-                var orders = await _service.CreateFromCart(customerId, request, accessToken);
+                var paymentTx = await _service.CreateFromCart(customerId, request, accessToken);
 
-                return Ok(orders);
+                if (request.PaymentMethod == PaymentMethod.COD)
+                {
+                    return Ok(new
+                    {
+                        Message = "Đơn hàng COD đã được tạo thành công.",
+                        OrderIds = paymentTx.OrderIds.Select(o => o.Id).ToList()
+                    });
+                }
+
+                // Phản hồi thanh toán online: Lấy PaymentUrl và TransactionId từ PaymentTransaction
+                return Ok(new
+                {
+                    PaymentTransactionId = paymentTx.Id,
+                    TotalAmount = paymentTx.TotalAmount,
+                    PaymentUrl = paymentTx.PaymentUrl,          // ✅ Correct: Lấy từ paymentTx
+                    TransactionId = paymentTx.TransactionId,    // ✅ Correct: Lấy từ paymentTx
+                    PaymentStatus = paymentTx.PaymentStatus.ToString(),
+                    OrderIds = paymentTx.OrderIds.Select(o => o.Id).ToList()
+                });
             }
-            // Bắt lỗi nghiệp vụ
             catch (ArgumentException ex)
             {
                 return BadRequest(new { message = $"Lỗi dữ liệu: {ex.Message}" });
             }
-            // Bắt lỗi SaveChanges hoặc lỗi hệ thống khác
             catch (Exception ex)
             {
-                // Lỗi này xảy ra sau khi đã xử lý 401/400
                 return StatusCode(500, new { message = $"Lỗi hệ thống khi tạo đơn hàng: {ex.Message}" });
             }
         }
 
 
         // ==========================
-        // 🔹 POST: Khởi tạo thanh toán
+        // 🔹 POST: Khởi tạo thanh toán (Đơn hàng đơn lẻ)
         // ==========================
         [HttpPost("{id:guid}/payment/initiate")]
         public async Task<IActionResult> InitiatePayment(Guid id)
         {
-            var order = await _service.InitiatePayment(id);
-            return Ok(new
+            try
             {
-                order.Id,
-                order.OrderNumber,
-                order.TotalPrice,
-                order.PaymentUrl,
-                order.TransactionId,
-                order.PaymentStatus
-            });
+                var paymentTx = await _service.InitiatePayment(id);
+
+                return Ok(new
+                {
+                    PaymentTransactionId = paymentTx.Id,
+                    TotalAmount = paymentTx.TotalAmount,
+                    PaymentUrl = paymentTx.PaymentUrl,          // ✅ Correct: Lấy từ paymentTx
+                    TransactionId = paymentTx.TransactionId,    // ✅ Correct: Lấy từ paymentTx
+                    PaymentStatus = paymentTx.PaymentStatus.ToString()
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = $"Lỗi khởi tạo thanh toán: {ex.Message}" });
+            }
         }
 
-        // 🔹 POST: Callback từ nhà cung cấp thanh toán
+        // 🔹 POST: Callback từ nhà cung cấp thanh toán (Webhook) (Giữ nguyên)
         [AllowAnonymous]
         [HttpPost("payment/callback")]
         public async Task<IActionResult> PaymentCallback([FromForm] string transactionId)
@@ -139,6 +150,7 @@ namespace OrderService.Api.Controllers
             var dict = Request.Form.ToDictionary(kv => kv.Key, kv => kv.Value.ToString());
 
             var success = await _service.HandlePaymentCallback(transactionId, dict);
+
             if (!success)
                 return BadRequest(new { message = "Xử lý callback thanh toán thất bại." });
 
@@ -146,26 +158,23 @@ namespace OrderService.Api.Controllers
         }
 
         // ==========================
-        // 🔹 PUT: Xác nhận / Hủy đơn
+        // 🔹 PUT (Giữ nguyên)
         // ==========================
         [HttpPut("{id:guid}/confirm")]
         [Authorize(Roles = "Admin,Seller")]
         public async Task<IActionResult> Confirm(Guid id)
         {
-            var order = await _service.GetById(id);
-            if (order == null) return NotFound();
-
-            return Ok(new { message = "implemented elsewhere" });
+            return Ok(new { message = "Confirm logic needs implementation." });
         }
 
         [HttpPut("{id:guid}/cancel")]
         public async Task<IActionResult> Cancel(Guid id)
         {
-            return Ok(new { message = "cancel endpoint not implemented in sample" });
+            return Ok(new { message = "Cancel logic needs implementation." });
         }
 
         // ==========================
-        // 🔹 POST: Kiểm tra trạng thái thanh toán
+        // 🔹 POST: Kiểm tra trạng thái thanh toán (Polling)
         // ==========================
         [HttpPost("{orderId:guid}/payment/check-status")]
         public async Task<IActionResult> CheckPaymentStatus(Guid orderId)
@@ -173,14 +182,20 @@ namespace OrderService.Api.Controllers
             var order = await _service.GetById(orderId);
             if (order == null) return NotFound();
 
-            if (order.PaymentStatus != PaymentStatus.Paid)
-            {
-                var isPaid = await _service.UpdatePaymentStatusAfterScan(orderId, order.TransactionId);
-                if (isPaid)
-                    return Ok(new { status = "Paid", order.TransactionId });
-            }
+            // 1. Kiểm tra trạng thái trong DB trước
+            if (order.PaymentStatus == PaymentStatus.Paid)
+                // Phản hồi chỉ dùng thuộc tính của Order (PaymentStatus, PaymentTransactionId)
+                return Ok(new { status = "Paid", order.PaymentTransactionId });
 
-            return Ok(new { status = order.PaymentStatus.ToString(), order.TransactionId });
+            // 2. Nếu chưa Paid, gọi Service để kiểm tra Payment Transaction từ cổng thanh toán
+            var isPaid = await _service.UpdatePaymentStatusAfterScan(orderId);
+
+            if (isPaid)
+                // Lấy lại Order đã cập nhật để trả về status mới
+                order = await _service.GetById(orderId);
+
+            // Phản hồi chỉ dùng thuộc tính của Order (PaymentStatus, PaymentTransactionId)
+            return Ok(new { status = order.PaymentStatus.ToString(), order.PaymentTransactionId });
         }
     }
 }

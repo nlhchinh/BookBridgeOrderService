@@ -51,8 +51,6 @@ namespace OrderService.Domain.Entities
         [Required]
         public PaymentProvider? PaymentProvider { get; set; }
 
-        public DateTime? PaidDate { get; set; }
-
 
 
         // Price & amount
@@ -74,12 +72,7 @@ namespace OrderService.Domain.Entities
 
         // Transaction
         [MaxLength(100)]
-        public string? TransactionId { get; set; }
-
-        [MaxLength(500)]
-        public string? PaymentUrl { get; set; }
-
-
+        public Guid? PaymentTransactionId { get; set; }
 
         // Navigation property
         public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();

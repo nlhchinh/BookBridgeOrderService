@@ -13,17 +13,17 @@ namespace OrderService.Application.Interface
 
         // THAY ĐỔI: Thêm OrderCreateRequest để nhận thông tin nhận hàng và PaymentMethod,
         // và accessToken để truyền cho CartClient.
-        Task<IEnumerable<Order>> CreateFromCart(Guid customerId, OrderCreateRequest checkoutRequest, string accessToken);
+        Task<PaymentTransaction> CreateFromCart(Guid customerId, OrderCreateRequest checkoutRequest, string accessToken);
 
         Task<Order> Update(Guid id, OrderUpdateRequest request);
         Task Delete(Guid id);
         Task<IEnumerable<Order>> SearchByCustomerEmail(string email);
-        Task<Order> InitiatePayment(Guid orderId);
+        Task<PaymentTransaction> InitiatePayment(Guid orderId);
 
         // THÊM: Method để xử lý kết quả callback/webhook thanh toán
         Task<bool> HandlePaymentCallback(string transactionId, IDictionary<string, string> payload);
 
         // THÊM: Method để cập nhật trạng thái sau khi user quét QR (có thể dùng để poll)
-        Task<bool> UpdatePaymentStatusAfterScan(Guid orderId, string transactionId);
+        Task<bool> UpdatePaymentStatusAfterScan(Guid orderId);
     }
 }
