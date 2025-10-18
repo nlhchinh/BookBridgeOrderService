@@ -81,7 +81,7 @@ namespace OrderService.Api.Controllers
 
             try
             {
-                // ✅ Lấy từ BaseApiController (đã kế thừa)
+                // Lấy từ BaseApiController (đã kế thừa)
                 customerId = GetCustomerId();
                 customerEmail = GetCustomerEmail();
             }

@@ -51,11 +51,23 @@ namespace OrderService.Infracstructure.Repositories
         public async Task<bool> CreateOrderAsync(Order order)
         {
             if (order == null) return false;
-
-            await _dbSet.AddAsync(order);
-            await _context.SaveChangesAsync();
-            return true;
+            try
+            {
+                await _dbSet.AddAsync(order); // <-- dùng _dbSet, không _context.Orders
+                Console.WriteLine($"DB Provider: {_context.Database.ProviderName}");
+                Console.WriteLine($"DB Conn: {_context.Database.GetConnectionString()}");
+                await _context.SaveChangesAsync();
+                Console.WriteLine($"✅ Order {order.OrderNumber} saved successfully.");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Save failed: {ex}");
+                return false;
+            }
         }
+
+
 
         public async Task<bool> UpdateOrderAsync(Order order)
         {
