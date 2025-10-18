@@ -1,22 +1,29 @@
 ﻿using Common.Paging;
 using OrderService.Application.Models;
 using OrderService.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace OrderService.Application.Interface
 {
     public interface IOrderServices
     {
         Task<PagedResult<Order>> GetAll(int page, int pageSize);
-        Task<Order> GetById(int id);
-        Task<PagedResult<Order>> GetOrderByCustomer(string customerId, int pageNo, int pageSize);
+        Task<Order> GetById(Guid id);
+        Task<PagedResult<Order>> GetOrderByCustomer(Guid customerId, int pageNo, int pageSize);
         Task<Order> Create(OrderCreateRequest request);
-        Task<bool> Confirm(int id);
-        Task<bool> Finish(int id);
-        Task<bool> Cancle(int id);
+
+        // THAY ĐỔI: Thêm OrderCreateRequest để nhận thông tin nhận hàng và PaymentMethod,
+        // và accessToken để truyền cho CartClient.
+        Task<IEnumerable<Order>> CreateFromCart(Guid customerId, OrderCreateRequest checkoutRequest, string accessToken);
+
+        Task<Order> Update(Guid id, OrderUpdateRequest request);
+        Task Delete(Guid id);
+        Task<IEnumerable<Order>> SearchByCustomerEmail(string email);
+        Task<Order> InitiatePayment(Guid orderId);
+
+        // THÊM: Method để xử lý kết quả callback/webhook thanh toán
+        Task<bool> HandlePaymentCallback(string transactionId, IDictionary<string, string> payload);
+
+        // THÊM: Method để cập nhật trạng thái sau khi user quét QR (có thể dùng để poll)
+        Task<bool> UpdatePaymentStatusAfterScan(Guid orderId, string transactionId);
     }
 }

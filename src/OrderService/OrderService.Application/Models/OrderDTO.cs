@@ -1,33 +1,30 @@
 ﻿using OrderService.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace OrderService.Application.Models
 {
-    public class OrderDTO
-    {
-        public int Id { get; set; }
-        public string OrderNumber { get; set; }
-        public string CustomerId { get; set; }
-        public DateTime OrderDate { get; set; } 
-        public decimal TotalAmount { get; set; }
-        public string ShippingAddress { get; set; }
-        public DateTime? ShippedDate { get; set; }
-        public string Status { get; set; }
-        public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
-    }
-    public class OrderCreateRequest
-    {
-        public string CustomerId { get; set; }
-        public decimal TotalAmount { get; set; }
-        public string ShippingAddress { get; set; }
-        public ICollection<OrderItemCreateRequest> OrderItems { get; set; } = new List<OrderItemCreateRequest>();
 
+    public class OrderItemRequest
+    {
+        public int BookId { get; set; }
+        public int Quantity { get; set; }
+        public decimal UnitPrice { get; set; }
+    }
+
+    public class OrderUpdateRequest
+    {
+        public string CustomerPhoneNumber { get; set; }
+        public string DeliveryAddress { get; set; }
+        public PaymentMethod? PaymentMethod { get; set; }
+        public PaymentProvider? PaymentProvider { get; set; }
+        // trạng thái update nếu cần
+    }
+
+    public class OrderSearchRequest
+    {
+        public string? CustomerEmail { get; set; } // nếu search bằng email
+        public Guid? CustomerId { get; set; }
+        public int Page { get; set; } = 1;
+        public int PageSize { get; set; } = 20;
     }
 
 }

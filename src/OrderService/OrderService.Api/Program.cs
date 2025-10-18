@@ -3,15 +3,21 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using OrderService.Application.Interface;
+using OrderService.Application.MappingProfile;
 using OrderService.Application.Services;
+using OrderService.Application.Services.External;
+using OrderService.Application.Services.Payment;
 using OrderService.Domain.Entities;
 using OrderService.Infracstructure.DBContext;
 using OrderService.Infracstructure.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
-// Add services to the container.
 
+
+
+
+// Add services to the container.
 builder.Services.AddControllers();
 //Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -77,10 +83,24 @@ builder.Services.AddAuthentication(options =>
 
 });
 
+// Cart client: base address = CartService hostname (render). Replace with actual url.
+builder.Services.AddHttpClient<ICartClient, CartClient>(client =>
+{
+    client.BaseAddress = new Uri("https://bookbridgecartservice.onrender.com"); // <<--- Render URL
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+
+// Payment service: mock for now
+builder.Services.AddScoped<IPaymentService, MockPaymentService>();
+
+// Order service
+builder.Services.AddScoped<IOrderServices, OrderServices>();
+
+builder.Services.AddAutoMapper(typeof(OrderMappingProfile).Assembly);
+
 var app = builder.Build();
 
-// Tự động áp dụng migrations VÀ XỬ LÝ LỖI - Cách 2
-// Tự động áp dụng migrations VÀ XỬ LÝ LỖI - Cách 2
+// Tự động áp dụng migrations VÀ XỬ LÝ LỖI
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider; // <-- chỉ tồn tại trong scope này

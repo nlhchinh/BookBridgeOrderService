@@ -44,12 +44,18 @@ namespace Common.Infrastructure.Repositories
             return entity;
         }
 
-     
+
         public virtual async Task<bool> DeleteAsync(TEntity entity)
         {
             _dbSet.Remove(entity);
             var result = await _context.SaveChangesAsync();
             return result > 0;
+        }
+        
+        public virtual async Task AddAsync(TEntity entity)
+        {
+            await _dbSet.AddAsync(entity);
+            await _context.SaveChangesAsync();
         }
     }
 }

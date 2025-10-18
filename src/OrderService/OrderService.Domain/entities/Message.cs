@@ -13,21 +13,43 @@ namespace OrderService.Domain.Entities
 
 		[Required]
 		[MaxLength(100)]
-		public string EventType { get; set; }  // Tên event, ví dụ "BookstoreCreatedEvent"
+		public string EventType { get; set; } = string.Empty; // Event name: BookstorePublishEvent
+
+		[MaxLength(100)]
+		public string? ServiceName { get; set; }
+
 
 		[Required]
-		public string Payload { get; set; }  // Dữ liệu JSON của message
+		public string Payload { get; set; } = string.Empty;  // Json reponse
 
+		[Required]
 		[MaxLength(50)]
-		public string Status { get; set; } = "Pending";  // Pending, Published, Failed,...
+		public MessageStatus MessageStatus { get; set; } = MessageStatus.Pending;
 
+
+		// Trace flow
 		[MaxLength(255)]
-		public string TraceId { get; set; }  // Dùng để trace flow giữa các service
+		public string? TraceId { get; set; }
 
+
+		[Required]
 		public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-		public DateTime? PublishedAt { get; set; }  // Khi message được publish
+		public DateTime? PublishedAt { get; set; }
 
-		public int RetryCount { get; set; } = 0;  // Số lần retry publish nếu fail
+		[Required]
+		public int RetryCount { get; set; } = 0;
+		
+		[Column(TypeName = "text")]
+		public string? LastError { get; set; }
+
+	}
+
+	public enum MessageStatus
+	{
+		Pending,
+		Published,
+		Failed,
+		Processing
 	}
 }
