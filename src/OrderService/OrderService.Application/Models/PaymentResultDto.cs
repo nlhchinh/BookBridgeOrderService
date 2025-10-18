@@ -1,6 +1,6 @@
 namespace OrderService.Application.Models
 {
-    public class PaymentResult
+    public class PaymentResultDto
     {
         public bool Success { get; set; }
         public string Message { get; set; } = string.Empty;
