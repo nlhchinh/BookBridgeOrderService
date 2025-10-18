@@ -16,8 +16,6 @@ namespace OrderService.Domain.Entities
         [Required]
         public int BookId { get; set; }   // Foreign key đến Book
 
-
-
         [Required]
         public int Quantity { get; set; }
 
@@ -32,6 +30,7 @@ namespace OrderService.Domain.Entities
         // Navigation property
         [ForeignKey(nameof(OrderId))]
         [JsonIgnore]
+        [Required]
         public Order Order { get; set; }
     }
 }
