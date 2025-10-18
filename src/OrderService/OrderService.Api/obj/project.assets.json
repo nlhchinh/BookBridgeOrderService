@@ -4852,6 +4852,7 @@
       "OrderService.Domain >= 1.0.0",
       "OrderService.Infrastructure >= 1.0.0",
       "OrderService.Message >= 1.0.0",
+      "StackExchange.Redis >= 2.9.32",
       "Swashbuckle.AspNetCore >= 6.4.0"
     ]
   },
@@ -4919,6 +4920,10 @@
             "suppressParent": "All",
             "target": "Package",
             "version": "[8.0.17, )"
+          },
+          "StackExchange.Redis": {
+            "target": "Package",
+            "version": "[2.9.32, )"
           },
           "Swashbuckle.AspNetCore": {
             "target": "Package",

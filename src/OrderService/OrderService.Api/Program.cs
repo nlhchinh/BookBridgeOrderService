@@ -13,6 +13,7 @@ using OrderService.Domain.Entities;
 using OrderService.Infracstructure.DBContext;
 using OrderService.Infracstructure.Repositories;
 using Microsoft.OpenApi.Models;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;

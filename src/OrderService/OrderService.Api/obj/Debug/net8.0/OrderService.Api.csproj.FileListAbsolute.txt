@@ -518,6 +518,8 @@ E:\My githhub repo(UserSerivce)\BookBridgeOrderService\src\OrderService\OrderSer
 E:\My githhub repo(UserSerivce)\BookBridgeOrderService\src\OrderService\OrderService.Api\bin\Debug\net8.0\Mono.TextTemplating.dll
 E:\My githhub repo(UserSerivce)\BookBridgeOrderService\src\OrderService\OrderService.Api\bin\Debug\net8.0\Npgsql.dll
 E:\My githhub repo(UserSerivce)\BookBridgeOrderService\src\OrderService\OrderService.Api\bin\Debug\net8.0\Npgsql.EntityFrameworkCore.PostgreSQL.dll
+E:\My githhub repo(UserSerivce)\BookBridgeOrderService\src\OrderService\OrderService.Api\bin\Debug\net8.0\Pipelines.Sockets.Unofficial.dll
+E:\My githhub repo(UserSerivce)\BookBridgeOrderService\src\OrderService\OrderService.Api\bin\Debug\net8.0\StackExchange.Redis.dll
 E:\My githhub repo(UserSerivce)\BookBridgeOrderService\src\OrderService\OrderService.Api\bin\Debug\net8.0\Swashbuckle.AspNetCore.Swagger.dll
 E:\My githhub repo(UserSerivce)\BookBridgeOrderService\src\OrderService\OrderService.Api\bin\Debug\net8.0\Swashbuckle.AspNetCore.SwaggerGen.dll
 E:\My githhub repo(UserSerivce)\BookBridgeOrderService\src\OrderService\OrderService.Api\bin\Debug\net8.0\Swashbuckle.AspNetCore.SwaggerUI.dll
