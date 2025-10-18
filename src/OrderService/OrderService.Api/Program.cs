@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +12,7 @@ using OrderService.Application.Services.Payment;
 using OrderService.Domain.Entities;
 using OrderService.Infracstructure.DBContext;
 using OrderService.Infracstructure.Repositories;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
@@ -33,6 +36,8 @@ builder.Services.AddScoped<IOrderServices, OrderServices>();
 
 builder.Services.AddScoped<OrderRepository>();
 builder.Services.AddScoped<OrderItemRepository>();
+builder.Services.AddScoped<ICacheService, RedisCacheService>();
+
 
 // 3. JWT
 var jwtKey = configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key is not configured.");
@@ -58,28 +63,28 @@ builder.Services.AddAuthentication(options =>
         NameClaimType = "nameid"
     };
 
-    // options.Events = new JwtBearerEvents
-    // {
-    //     OnTokenValidated = async context =>
-    //     {
-    //         var jti = context.Principal.FindFirstValue(JwtRegisteredClaimNames.Jti);
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async context =>
+        {
+            var jti = context.Principal.FindFirstValue(JwtRegisteredClaimNames.Jti);
 
-    //         if (string.IsNullOrEmpty(jti))
-    //         {
-    //             context.Fail("JWT missing jti.");
-    //             return;
-    //         }
+            if (string.IsNullOrEmpty(jti))
+            {
+                context.Fail("JWT missing jti.");
+                return;
+            }
 
-    //         var cacheService = context.HttpContext.RequestServices.GetRequiredService<ICacheService>();
+            var cacheService = context.HttpContext.RequestServices.GetRequiredService<ICacheService>();
 
-    //         if (await cacheService.IsBlacklistedAsync(jti))
-    //         {
-    //             context.Fail("This token has been revoked.");
-    //         }
+            if (await cacheService.IsBlacklistedAsync(jti))
+            {
+                context.Fail("This token has been revoked.");
+            }
 
-    //         await Task.CompletedTask;
-    //     }
-    // };
+            await Task.CompletedTask;
+        }
+    };
 
 });
 
@@ -93,10 +98,59 @@ builder.Services.AddHttpClient<ICartClient, CartClient>(client =>
 // Payment service: mock for now
 builder.Services.AddScoped<IPaymentService, MockPaymentService>();
 
-// Order service
-builder.Services.AddScoped<IOrderServices, OrderServices>();
-
 builder.Services.AddAutoMapper(typeof(OrderMappingProfile).Assembly);
+
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Your API Name", Version = "v1" });
+
+    // 1. Định nghĩa Security Scheme (Security Definition)
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        In = ParameterLocation.Header,
+        Description = "Vui lòng nhập Bearer Token vào trường text bên dưới. Ví dụ: 'Bearer {token}'",
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer" // Phải là "Bearer"
+    });
+
+    // 2. Yêu cầu Security (Security Requirement)
+    // Áp dụng định nghĩa "Bearer" cho tất cả các endpoint (hoặc chỉ những cái cần)
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer" // Tham chiếu đến tên của Security Scheme ở trên
+                }
+            },
+            new string[] {}
+        }
+    });
+});
+
+var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? Environment.GetEnvironmentVariable("ConnectionStrings__Redis");
+
+if (redisConnection.StartsWith("redis://"))
+{
+    redisConnection = redisConnection.Replace("redis://", "");
+}
+
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+{
+    try
+    {
+        return ConnectionMultiplexer.Connect(redisConnection);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Redis connection failed: {ex.Message}");
+        throw;
+    }
+});
 
 var app = builder.Build();
 
@@ -131,6 +185,7 @@ if (app.Environment.IsDevelopment())
 
 // app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
