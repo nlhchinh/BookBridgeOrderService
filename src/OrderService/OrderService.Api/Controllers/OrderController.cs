@@ -74,18 +74,17 @@ namespace OrderService.Api.Controllers
 
         // Tạo đơn hàng qua giỏ hàng (checkout flow)
         [HttpPost("checkout/create")]
-        [ProducesResponseType(typeof(IEnumerable<Order>), 200)]
-        [ProducesResponseType(typeof(object), 400)]
-        [ProducesResponseType(typeof(object), 500)]
         public async Task<IActionResult> CreateFromCart([FromBody] OrderCreateRequest request)
         {
-            // 1. Lấy thông tin người dùng từ Token
+            // Lấy thông tin người dùng từ Token
             var customerId = GetCustomerId();
             var customerEmail = GetCustomerEmail();
             var accessToken = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
 
+            // Kiểm tra thông tin người dùng được lấy từ Token/Claim
             if (customerId == Guid.Empty || string.IsNullOrEmpty(customerEmail))
-                return Unauthorized("Không tìm thấy thông tin khách hàng trong token.");
+                // Trả về 401 Unauthorized nếu thông tin chính không có trong Token
+                return Unauthorized("Không tìm thấy thông tin định danh (ID/Email) của khách hàng trong token.");
 
             if (string.IsNullOrEmpty(accessToken))
                 return Unauthorized("Không tìm thấy Access Token.");
@@ -96,21 +95,19 @@ namespace OrderService.Api.Controllers
                 request.CustomerId = customerId;
                 request.CustomerEmail = customerEmail;
 
-                // Gọi Service
                 var orders = await _service.CreateFromCart(customerId, request, accessToken);
 
-                // Trả về danh sách Order đã tạo thành công
                 return Ok(orders);
             }
-            // Bắt lỗi nghiệp vụ, trả về 400 Bad Request (ví dụ: dữ liệu request sai, giỏ hàng rỗng)
+            // Bắt lỗi nghiệp vụ
             catch (ArgumentException ex)
             {
                 return BadRequest(new { message = $"Lỗi dữ liệu: {ex.Message}" });
             }
-            // Bắt các lỗi khác (ví dụ: lỗi DB, lỗi SaveChangesAsync)
+            // Bắt lỗi SaveChanges hoặc lỗi hệ thống khác
             catch (Exception ex)
             {
-                // Log lỗi chi tiết tại đây (serilog, elmah,...)
+                // Lỗi này xảy ra sau khi đã xử lý 401/400
                 return StatusCode(500, new { message = $"Lỗi hệ thống khi tạo đơn hàng: {ex.Message}" });
             }
         }
