@@ -128,13 +128,13 @@ namespace OrderService.Application.Services
             OrderCreateRequest checkoutRequest,
             string accessToken)
         {
-            // 1. Kiểm tra Request Data (Dùng DTO mới: checkoutRequest.Stores)
+            // 1. Kiểm tra Request Data (Sử dụng ArgumentException để Controller trả về 400)
             if (checkoutRequest.Stores == null || !checkoutRequest.Stores.Any() || checkoutRequest.Stores.All(s => !s.OrderItems.Any()))
-                throw new Exception("Yêu cầu thanh toán không chứa mặt hàng nào hoặc cửa hàng hợp lệ.");
+                throw new ArgumentException("Yêu cầu thanh toán không chứa mặt hàng nào hoặc cửa hàng hợp lệ.");
 
-            // 2. Kiểm tra thanh toán (Áp dụng chung)
-            if (checkoutRequest.PaymentMethod == PaymentMethod.COD && checkoutRequest.PaymentProvider == null)
-                throw new ValidationException("Cần chọn nhà cung cấp thanh toán khi chọn thanh toán online.");
+            // 2. Kiểm tra thanh toán
+            if (checkoutRequest.PaymentMethod != PaymentMethod.COD && checkoutRequest.PaymentProvider == null)
+                throw new ArgumentException("Cần chọn nhà cung cấp thanh toán khi chọn thanh toán online.");
 
             var createdOrders = new List<Order>();
 
@@ -147,17 +147,12 @@ namespace OrderService.Application.Services
                 {
                     Id = Guid.NewGuid(),
                     CustomerId = customerId,
-                    BookstoreId = store.BookstoreId, // Lấy BookstoreId từ StoreCheckoutDto
+                    BookstoreId = store.BookstoreId,
                     OrderNumber = $"ORD-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString().Substring(0, 6)}",
-
-                    // Lấy thông tin chung từ Request chính
                     CustomerPhoneNumber = checkoutRequest.CustomerPhoneNumber,
                     DeliveryAddress = checkoutRequest.DeliveryAddress,
                     PaymentMethod = checkoutRequest.PaymentMethod,
-
-                    // Thiết lập PaymentProvider mặc định nếu cần
-                    PaymentProvider = checkoutRequest.PaymentProvider ??
-                                      (checkoutRequest.PaymentMethod == PaymentMethod.VietQR ? PaymentProvider.VNPay : null),
+                    PaymentProvider = checkoutRequest.PaymentProvider,
 
                     OrderDate = DateTime.UtcNow,
                     OrderStatus = OrderStatus.Created,
@@ -184,21 +179,27 @@ namespace OrderService.Application.Services
             }
 
             // 4. LƯU TẤT CẢ (Unit of Work)
-            if (createdOrders.Any())
+            if (!createdOrders.Any())
             {
-                var result = await _orderDbContext.SaveChangesAsync(); // <-- GỌI 1 LẦN
+                // Xử lý trường hợp không có đơn hàng nào được tạo (ví dụ: tất cả store đều không có item)
+                throw new ArgumentException("Không có đơn hàng nào được tạo. Vui lòng kiểm tra lại giỏ hàng.");
+            }
 
-                if (result == 0)
-                {
-                    throw new Exception("Không thể tạo bất kỳ đơn hàng nào. Vui lòng kiểm tra lại dữ liệu.");
-                }
+            // 🔥 ĐIỂM SỬA QUAN TRỌNG: Kiểm tra kết quả SaveChangesAsync
+            var rowsAffected = await _orderDbContext.SaveChangesAsync();
 
-                // 5. Xóa giỏ hàng (giả sử: xóa toàn bộ giỏ hàng cũ sau khi checkout thành công)
-                var isCartCleared = await _cartClient.ClearCartAsync(customerId.ToString(), accessToken);
-                if (!isCartCleared)
-                {
-                    // Log lỗi nếu không xóa được cart
-                }
+            // Nếu rowsAffected là 0, nghĩa là không có gì được lưu, ta phải ném lỗi.
+            if (rowsAffected == 0)
+            {
+                // Ném lỗi chung để Controller bắt và trả về 500 Internal Server Error
+                throw new Exception("Lưu đơn hàng vào cơ sở dữ liệu thất bại, không có bản ghi nào được tạo.");
+            }
+
+            // 5. Xóa giỏ hàng (Sau khi Order đã được lưu thành công)
+            var isCartCleared = await _cartClient.ClearCartAsync(customerId.ToString(), accessToken);
+            if (!isCartCleared)
+            {
+                // Chỉ log lỗi, không ném exception vì đơn hàng đã được tạo thành công
             }
 
             return createdOrders;

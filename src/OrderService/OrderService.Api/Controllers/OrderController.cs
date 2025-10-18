@@ -74,38 +74,44 @@ namespace OrderService.Api.Controllers
 
         // Tạo đơn hàng qua giỏ hàng (checkout flow)
         [HttpPost("checkout/create")]
+        [ProducesResponseType(typeof(IEnumerable<Order>), 200)]
+        [ProducesResponseType(typeof(object), 400)]
+        [ProducesResponseType(typeof(object), 500)]
         public async Task<IActionResult> CreateFromCart([FromBody] OrderCreateRequest request)
         {
-            Guid customerId;
-            string customerEmail;
-
-            try
-            {
-                // Lấy từ BaseApiController (đã kế thừa)
-                customerId = GetCustomerId();
-                customerEmail = GetCustomerEmail();
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(ex.Message);
-            }
-
+            // 1. Lấy thông tin người dùng từ Token
+            var customerId = GetCustomerId();
+            var customerEmail = GetCustomerEmail();
             var accessToken = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+
+            if (customerId == Guid.Empty || string.IsNullOrEmpty(customerEmail))
+                return Unauthorized("Không tìm thấy thông tin khách hàng trong token.");
+
             if (string.IsNullOrEmpty(accessToken))
                 return Unauthorized("Không tìm thấy Access Token.");
 
             try
             {
-                // Gắn email & id vào request luôn (client không cần gửi)
+                // Gắn email & id vào request (để đảm bảo không bị giả mạo từ client)
                 request.CustomerId = customerId;
                 request.CustomerEmail = customerEmail;
 
+                // Gọi Service
                 var orders = await _service.CreateFromCart(customerId, request, accessToken);
+
+                // Trả về danh sách Order đã tạo thành công
                 return Ok(orders);
             }
+            // Bắt lỗi nghiệp vụ, trả về 400 Bad Request (ví dụ: dữ liệu request sai, giỏ hàng rỗng)
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = $"Lỗi dữ liệu: {ex.Message}" });
+            }
+            // Bắt các lỗi khác (ví dụ: lỗi DB, lỗi SaveChangesAsync)
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                // Log lỗi chi tiết tại đây (serilog, elmah,...)
+                return StatusCode(500, new { message = $"Lỗi hệ thống khi tạo đơn hàng: {ex.Message}" });
             }
         }
 

@@ -1,30 +1,30 @@
-using OrderService.Domain.Entities;
-using System.ComponentModel.DataAnnotations;
+// Trong OrderService.Application.Models
+// File: OrderCreateRequest.cs
 
-namespace OrderService.Application.Models
+public class OrderCreateRequest
 {
-    public class OrderCreateRequest
-    {
-        // CustomerId được lấy từ Token/Path, nên không cần [Required] trong Body DTO
+    public Guid CustomerId { get; set; }
+    public string CustomerEmail { get; set; } // Sẽ được Controller ghi đè
+    public string CustomerPhoneNumber { get; set; }
+    public string DeliveryAddress { get; set; }
+    public OrderService.Domain.Entities.PaymentMethod PaymentMethod { get; set; }
+    public OrderService.Domain.Entities.PaymentProvider? PaymentProvider { get; set; }
 
-        public Guid CustomerId { get; set; }
-        public string? CustomerEmail { get; set; }
+    // Dữ liệu Multi-Store/Checkout
+    public List<StoreCheckoutDto> Stores { get; set; } = new List<StoreCheckoutDto>();
+}
 
-        // Thông tin chung cho tất cả đơn hàng
-        [Required, Phone]
-        public string CustomerPhoneNumber { get; set; }
+// File: StoreCheckoutDto.cs
+public class StoreCheckoutDto
+{
+    public int BookstoreId { get; set; }
+    public List<OrderItemCreateRequest> OrderItems { get; set; } = new List<OrderItemCreateRequest>();
+}
 
-        [Required, MaxLength(255)]
-        public string DeliveryAddress { get; set; }
-
-        [Required]
-        public PaymentMethod PaymentMethod { get; set; }
-
-        public PaymentProvider? PaymentProvider { get; set; }
-
-        // Danh sách các cửa hàng (Multi-Store)
-        [Required(ErrorMessage = "Phải có ít nhất một cửa hàng trong checkout.")]
-        [MinLength(1)]
-        public List<StoreCheckoutDto> Stores { get; set; } = new();
-    }
+// File: OrderItemCreateRequest.cs
+public class OrderItemCreateRequest
+{
+    public int BookId { get; set; }
+    public int Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
 }
