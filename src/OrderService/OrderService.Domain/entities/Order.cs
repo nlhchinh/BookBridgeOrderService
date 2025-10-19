@@ -72,7 +72,7 @@ namespace OrderService.Domain.Entities
         public Guid? PaymentTransactionId { get; set; }
 
         // Navigation property
-        [ForeignKey(nameof(PaymentTransactionId))]
+        // [ForeignKey(nameof(PaymentTransactionId))]
         public PaymentTransaction? PaymentTransaction { get; set; }
 
         // Navigation property

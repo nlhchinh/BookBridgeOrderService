@@ -12,8 +12,8 @@ using OrderService.Infracstructure.DBContext;
 namespace OrderService.Infrastructure.Migrations
 {
     [DbContext(typeof(OrderDbContext))]
-    [Migration("20251019105615_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20251019124408_FixPaymentTransactionFK")]
+    partial class FixPaymentTransactionFK
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
