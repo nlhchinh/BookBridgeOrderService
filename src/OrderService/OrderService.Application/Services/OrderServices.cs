@@ -83,6 +83,7 @@ namespace OrderService.Application.Services
                 CustomerPhoneNumber = request.CustomerPhoneNumber,
                 DeliveryAddress = request.DeliveryAddress,
                 OrderDate = DateTime.UtcNow,
+                OrderNumber = $"ORD-{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid().ToString().Substring(0, 4).ToUpper()}", // Sử dụng GUID/Thời gian
                 OrderStatus = OrderStatus.Confirmed, // COD mặc định xác nhận khi tạo (tuỳ nghiệp vụ, ở đây đánh dấu Confirmed)
                 PaymentMethod = PaymentMethod.COD,
                 PaymentProvider = null,
@@ -173,6 +174,7 @@ namespace OrderService.Application.Services
                         PaymentMethod = PaymentMethod.COD,
                         PaymentProvider = null,
                         OrderDate = DateTime.UtcNow,
+                        OrderNumber = $"ORD-{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid().ToString().Substring(0, 4).ToUpper()}", // Giá trị duy nhất
                         OrderStatus = OrderStatus.Confirmed,
                         PaymentStatus = PaymentStatus.Paid
                     };
