@@ -10,14 +10,13 @@ namespace OrderService.Domain.Entities
         [Key]
         public Guid Id { get; set; }
 
-        [Required]
-        public string TransactionId { get; set; }
+        public string? TransactionId { get; set; }
 
         [Required]
         public PaymentStatus PaymentStatus { get; set; }
 
         [Required]
-        public string PaymentUrl { get; set; }
+        public string? PaymentUrl { get; set; }
 
         [Required]
         [Column(TypeName = "decimal(18,2)")]
@@ -25,6 +24,6 @@ namespace OrderService.Domain.Entities
         public DateTime? PaidDate { get; set; }
 
         // Navigation property
-        public ICollection<Order> OrderIds { get; set; } = new List<Order>();
+        public ICollection<Order> Orders { get; set; } = new List<Order>();
     }
 }

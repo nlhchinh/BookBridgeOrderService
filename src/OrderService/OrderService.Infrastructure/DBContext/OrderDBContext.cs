@@ -30,7 +30,7 @@ namespace OrderService.Infracstructure.DBContext
 
                 // Cấu hình mối quan hệ 1-n (PaymentTransaction-Order)
                 entity.HasOne<PaymentTransaction>() // Order thuộc về 1 PaymentTransaction (hoặc null)
-                      .WithMany(pt => pt.OrderIds) // PaymentTransaction có nhiều Orders
+                      .WithMany(pt => pt.Orders) // PaymentTransaction có nhiều Orders
                       .HasForeignKey(o => o.PaymentTransactionId)
                       .IsRequired(false) // PaymentTransactionId là nullable
                       .OnDelete(DeleteBehavior.Restrict); // Không xóa Order khi xóa Transaction
@@ -46,7 +46,7 @@ namespace OrderService.Infracstructure.DBContext
             modelBuilder.Entity<PaymentTransaction>(entity =>
             {
                 entity.Property(pt => pt.TotalAmount).HasColumnType("decimal(18,2)");
-                entity.HasIndex(pt => pt.TransactionId).IsUnique(); // Thường TransactionId là unique
+                entity.HasIndex(pt => pt.TransactionId).IsUnique();
             });
 
             modelBuilder.Entity<Message>(entity =>

@@ -69,10 +69,11 @@ namespace OrderService.Domain.Entities
         public bool IsDeleted { get; set; } = false;
 
 
-
-        // Transaction
-        [MaxLength(100)]
         public Guid? PaymentTransactionId { get; set; }
+
+        // Navigation property
+        [ForeignKey(nameof(PaymentTransactionId))]
+        public PaymentTransaction? PaymentTransaction { get; set; }
 
         // Navigation property
         public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
@@ -96,7 +97,7 @@ namespace OrderService.Domain.Entities
         Unpaid = 2,
         Paid = 3,
         Failed = 4,
-        Refunded = 5 
+        Refunded = 5
     }
 
     public enum PaymentMethod

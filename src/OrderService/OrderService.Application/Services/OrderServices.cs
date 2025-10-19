@@ -159,7 +159,7 @@ namespace OrderService.Application.Services
                     PaymentStatus = PaymentStatus.Pending // Order status ban đầu
                 };
 
-                // Tạo OrderItems (như cũ)
+                // Tạo OrderItems
                 order.OrderItems = store.OrderItems.Select(i => new OrderItem
                 {
                     Id = Guid.NewGuid(),
@@ -182,12 +182,21 @@ namespace OrderService.Application.Services
                 throw new ArgumentException("Không có đơn hàng nào được tạo.");
             }
 
-            // 4. LƯU TẤT CẢ ORDERS vào DB (Unit of Work)
-            var rowsAffected = await _orderDbContext.SaveChangesAsync();
-            if (rowsAffected == 0)
+            // --- Bắt đầu Unit of Work/Transaction ---
+            // 4. LƯU TẤT CẢ ORDERS vào DB (Lần 1)
+            try
             {
-                throw new Exception("Lưu đơn hàng vào cơ sở dữ liệu thất bại.");
+                var rowsAffected = await _orderDbContext.SaveChangesAsync();
+                if (rowsAffected == 0)
+                {
+                    throw new Exception("Lưu đơn hàng vào cơ sở dữ liệu thất bại (Lần 1).");
+                }
             }
+            catch (DbUpdateException ex)
+            {
+                throw new Exception("Lỗi DB khi lưu Orders: " + ex.InnerException?.Message ?? ex.Message);
+            }
+
 
             // 5. TẠO GIAO DỊCH THANH TOÁN GỘP (Payment Transaction)
             var totalAmount = createdOrders.Sum(o => o.TotalPrice);
@@ -197,8 +206,8 @@ namespace OrderService.Application.Services
                 Id = Guid.NewGuid(),
                 TotalAmount = totalAmount,
                 PaymentStatus = PaymentStatus.Pending,
-                // TransactionId và PaymentUrl sẽ được cập nhật sau
-                // Navigation property OrderIds sẽ được EF Core tự động liên kết khi SaveChanges lần 2
+                // PaymentUrl sẽ được cập nhật sau. Ta tạm thời set một giá trị để thỏa mãn [Required] của DBContext nếu cần.
+                PaymentUrl = "Initializing",
             };
 
             // Liên kết tất cả Orders vừa tạo với PaymentTransaction này
@@ -209,32 +218,87 @@ namespace OrderService.Application.Services
 
             _orderDbContext.PaymentTransactions.Add(paymentTx);
 
-            // Lưu các thay đổi về PaymentTransactionId vào DB
-            await _orderDbContext.SaveChangesAsync();
-
-
-            // 6. KHỞI TẠO THANH TOÁN (Lấy QR/URL)
-            // Gọi Payment Service để tạo QR Code / Payment URL cho giao dịch gộp
-            var paymentResult = await _paymentService.InitiatePaymentAsync(paymentTx);
-
-            if (!paymentResult.Success)
+            // 6. LƯU PaymentTransaction & Cập nhật Order.PaymentTransactionId (Lần 2)
+            try
             {
-                // Log lỗi. Ở đây ta không hủy Order, chỉ cần thông báo lỗi khởi tạo thanh toán.
-                throw new Exception($"Không thể khởi tạo thanh toán online: {paymentResult.Message}");
+                await _orderDbContext.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                throw new Exception("Lỗi DB khi lưu PaymentTransaction và liên kết Orders (Lần 2): " + ex.InnerException?.Message ?? ex.Message);
             }
 
-            // 7. CẬP NHẬT PaymentTransaction với kết quả (URL và TX ID)
-            paymentTx.PaymentUrl = paymentResult.PaymentUrl;
-            paymentTx.TransactionId = paymentResult.TransactionId;
 
-            // Lưu PaymentUrl và TransactionId vào DbContext
-            await _orderDbContext.SaveChangesAsync();
+            // 7. Xử lý COD: Trả về PaymentTransaction với trạng thái Paid
+            if (checkoutRequest.PaymentMethod == PaymentMethod.COD)
+            {
+                paymentTx.PaymentStatus = PaymentStatus.Paid; // Hoặc Confirmed/Delivered tùy nghiệp vụ COD
+                paymentTx.PaidDate = DateTime.UtcNow;
+                paymentTx.PaymentUrl = "COD_SUCCESS";
+                paymentTx.TransactionId = $"COD_TX_{paymentTx.Id}";
 
-            // 8. Xóa giỏ hàng (Sau khi Order đã được lưu thành công)
-            var isCartCleared = await _cartClient.ClearCartAsync(customerId.ToString(), accessToken);
-            // ... (Log lỗi nếu không xóa được giỏ hàng)
+                // Cập nhật Orders thành Confirmed/Paid
+                foreach (var order in createdOrders)
+                {
+                    order.PaymentStatus = PaymentStatus.Paid;
+                    order.OrderStatus = OrderStatus.Confirmed;
+                }
 
-            // Trả về PaymentTransaction để frontend hiển thị QR/redirect
+                try
+                {
+                    await _orderDbContext.SaveChangesAsync();
+                }
+                catch (DbUpdateException ex)
+                {
+                    throw new Exception("Lỗi DB khi cập nhật trạng thái COD: " + ex.InnerException?.Message ?? ex.Message);
+                }
+            }
+            else // 8. KHỞI TẠO THANH TOÁN ONLINE (VietQR, EWallet)
+            {
+                PaymentResult paymentResult;
+                try
+                {
+                    // Gọi Payment Service để tạo QR Code / Payment URL cho giao dịch gộp
+                    paymentResult = await _paymentService.InitiatePaymentAsync(paymentTx);
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"Lỗi gọi Payment Service: {ex.Message}");
+                }
+
+                if (!paymentResult.Success)
+                {
+                    // Vẫn giữ Orders/PaymentTransaction trong DB, chỉ báo lỗi khởi tạo thanh toán
+                    throw new Exception($"Không thể khởi tạo thanh toán online: {paymentResult.Message}");
+                }
+
+                // 9. CẬP NHẬT PaymentTransaction với kết quả (URL và TX ID)
+                paymentTx.PaymentUrl = paymentResult.PaymentUrl;
+                paymentTx.TransactionId = paymentResult.TransactionId;
+
+                // Lưu PaymentUrl và TransactionId vào DbContext (Lần 3)
+                try
+                {
+                    await _orderDbContext.SaveChangesAsync();
+                }
+                catch (DbUpdateException ex)
+                {
+                    throw new Exception("Lỗi DB khi cập nhật PaymentTransaction URL/ID (Lần 3): " + ex.InnerException?.Message ?? ex.Message);
+                }
+            }
+
+            // 10. Xóa giỏ hàng (Không nằm trong Transaction chính, chỉ log lỗi nếu thất bại)
+            try
+            {
+                await _cartClient.ClearCartAsync(customerId.ToString(), accessToken);
+            }
+            catch (Exception ex)
+            {
+                // Có thể log lỗi ở đây nhưng không cần dừng luồng thanh toán chính
+                Console.WriteLine($"Warning: Failed to clear cart for customer {customerId}: {ex.Message}");
+            }
+
+            // 11. Trả về PaymentTransaction để frontend hiển thị QR/redirect
             return paymentTx;
         }
 
@@ -278,9 +342,11 @@ namespace OrderService.Application.Services
         public async Task<PaymentTransaction> InitiatePayment(Guid orderId)
         {
             // Cần lấy order có tracking để update
-            var order = await _orderDbContext.Orders.FirstOrDefaultAsync(o => o.Id == orderId);
+            var order = await _orderDbContext.Orders
+                .FirstOrDefaultAsync(o => o.Id == orderId);
 
             if (order == null) throw new Exception("Order not found");
+            if (order.PaymentTransactionId.HasValue) throw new InvalidOperationException("Order đã được gán với giao dịch thanh toán."); // Ngăn chặn tạo lại giao dịch
             if (order.PaymentStatus == PaymentStatus.Paid) throw new InvalidOperationException("Order đã được thanh toán.");
             if (order.PaymentMethod == PaymentMethod.COD)
                 throw new InvalidOperationException("Phương thức thanh toán COD không cần khởi tạo.");
@@ -293,7 +359,7 @@ namespace OrderService.Application.Services
                 Id = Guid.NewGuid(),
                 TotalAmount = order.TotalPrice,
                 PaymentStatus = PaymentStatus.Pending,
-                OrderIds = new List<Order> { order }
+                PaymentUrl = "Initializing" // Tạm thời
             };
 
             // 2. LIÊN KẾT: Gán PaymentTransactionId mới cho Order
@@ -303,10 +369,27 @@ namespace OrderService.Application.Services
             _orderDbContext.PaymentTransactions.Add(paymentTx);
 
             // Lưu Transaction vào DB
-            await _orderDbContext.SaveChangesAsync();
+            try
+            {
+                await _orderDbContext.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                throw new Exception("Lỗi DB khi lưu PaymentTransaction và liên kết Order: " + ex.InnerException?.Message ?? ex.Message);
+            }
+
 
             // 3. KHỞI TẠO THANH TOÁN
-            var result = await _paymentService.InitiatePaymentAsync(paymentTx); // <- ĐÃ SỬA: dùng paymentTx
+            PaymentResult result;
+            try
+            {
+                result = await _paymentService.InitiatePaymentAsync(paymentTx);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Lỗi gọi Payment Service: {ex.Message}");
+            }
+
 
             if (result.Success)
             {
@@ -314,18 +397,21 @@ namespace OrderService.Application.Services
                 paymentTx.PaymentUrl = result.PaymentUrl;
                 paymentTx.TransactionId = result.TransactionId;
 
-                // Order.PaymentUrl và Order.TransactionId không cần nữa, nhưng nếu muốn giữ để tiện tra cứu:
-                // order.PaymentUrl = result.PaymentUrl; // Đã bỏ trong Order Entity của bạn
-                order.PaymentTransactionId = paymentTx.Id;
+                // Lưu lại kết quả
+                try
+                {
+                    await _orderDbContext.SaveChangesAsync();
+                }
+                catch (DbUpdateException ex)
+                {
+                    throw new Exception("Lỗi DB khi cập nhật PaymentTransaction URL/ID: " + ex.InnerException?.Message ?? ex.Message);
+                }
 
-                await _orderDbContext.SaveChangesAsync();
-
-                // Trả về Order (có thể đính kèm PaymentUrl từ Transaction nếu cần cho DTO)
                 return paymentTx;
             }
             else
             {
-                throw new Exception($"Không thể khởi tạo thanh toán: {result.Message}");
+                throw new Exception($"Lỗi khởi tạo thanh toán: {result.Message}");
             }
         }
 
@@ -334,7 +420,7 @@ namespace OrderService.Application.Services
             // 1. Tìm PaymentTransaction dựa trên TransactionId
             var paymentTx = await _orderDbContext.PaymentTransactions
                 // Cần Include các Order liên quan để cập nhật trạng thái của chúng
-                .Include(pt => pt.OrderIds)
+                .Include(pt => pt.Orders)
                 .FirstOrDefaultAsync(pt => pt.TransactionId == transactionId);
 
             if (paymentTx == null)
@@ -353,7 +439,7 @@ namespace OrderService.Application.Services
                 paymentTx.PaidDate = DateTime.UtcNow;
 
                 // 4. Cập nhật tất cả các Orders thuộc về giao dịch này
-                foreach (var order in paymentTx.OrderIds)
+                foreach (var order in paymentTx.Orders)
                 {
                     order.PaymentStatus = PaymentStatus.Paid;
                     order.OrderStatus = OrderStatus.Confirmed;
@@ -364,7 +450,7 @@ namespace OrderService.Application.Services
                 paymentTx.PaymentStatus = PaymentStatus.Failed;
 
                 // Cập nhật Orders sang Failed
-                foreach (var order in paymentTx.OrderIds)
+                foreach (var order in paymentTx.Orders)
                 {
                     order.PaymentStatus = PaymentStatus.Failed;
                     order.OrderStatus = OrderStatus.Canceled; // Hoặc giữ nguyên Created/Pending tùy nghiệp vụ
@@ -399,7 +485,7 @@ namespace OrderService.Application.Services
 
             // 3. Tìm PaymentTransaction dựa trên PaymentTransactionId
             var paymentTx = await _orderDbContext.PaymentTransactions
-                .Include(pt => pt.OrderIds) // Rất quan trọng: Bao gồm tất cả các Order liên quan
+                .Include(pt => pt.Orders) // Rất quan trọng: Bao gồm tất cả các Order liên quan
                 .FirstOrDefaultAsync(pt => pt.Id == order.PaymentTransactionId.Value);
 
             if (paymentTx == null) return false;
@@ -408,7 +494,7 @@ namespace OrderService.Application.Services
             if (paymentTx.PaymentStatus == PaymentStatus.Paid)
             {
                 // Cập nhật tất cả các Orders thuộc về giao dịch này
-                foreach (var relatedOrder in paymentTx.OrderIds)
+                foreach (var relatedOrder in paymentTx.Orders)
                 {
                     if (relatedOrder.PaymentStatus != PaymentStatus.Paid)
                     {
@@ -430,7 +516,7 @@ namespace OrderService.Application.Services
                 paymentTx.PaymentStatus = PaymentStatus.Paid;
 
                 // 7. Cập nhật tất cả các Orders thuộc về giao dịch này
-                foreach (var relatedOrder in paymentTx.OrderIds)
+                foreach (var relatedOrder in paymentTx.Orders)
                 {
                     relatedOrder.PaymentStatus = PaymentStatus.Paid;
                     relatedOrder.OrderStatus = OrderStatus.Confirmed;

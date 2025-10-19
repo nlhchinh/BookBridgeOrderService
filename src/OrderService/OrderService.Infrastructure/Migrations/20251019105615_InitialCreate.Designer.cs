@@ -12,8 +12,8 @@ using OrderService.Infracstructure.DBContext;
 namespace OrderService.Infrastructure.Migrations
 {
     [DbContext(typeof(OrderDbContext))]
-    [Migration("20251018220238_MakeTransactionIdNullable")]
-    partial class MakeTransactionIdNullable
+    [Migration("20251019105615_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -126,7 +126,9 @@ namespace OrderService.Infrastructure.Migrations
                         .HasColumnType("integer");
 
                     b.Property<Guid?>("PaymentTransactionId")
-                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("PaymentTransactionId1")
                         .HasColumnType("uuid");
 
                     b.Property<decimal>("TotalPrice")
@@ -141,6 +143,8 @@ namespace OrderService.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("PaymentTransactionId");
+
+                    b.HasIndex("PaymentTransactionId1");
 
                     b.ToTable("Orders");
                 });
@@ -193,7 +197,6 @@ namespace OrderService.Infrastructure.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("TransactionId")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
@@ -207,9 +210,15 @@ namespace OrderService.Infrastructure.Migrations
             modelBuilder.Entity("OrderService.Domain.Entities.Order", b =>
                 {
                     b.HasOne("OrderService.Domain.Entities.PaymentTransaction", null)
-                        .WithMany("OrderIds")
+                        .WithMany("Orders")
                         .HasForeignKey("PaymentTransactionId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("OrderService.Domain.Entities.PaymentTransaction", "PaymentTransaction")
+                        .WithMany()
+                        .HasForeignKey("PaymentTransactionId1");
+
+                    b.Navigation("PaymentTransaction");
                 });
 
             modelBuilder.Entity("OrderService.Domain.Entities.OrderItem", b =>
@@ -230,7 +239,7 @@ namespace OrderService.Infrastructure.Migrations
 
             modelBuilder.Entity("OrderService.Domain.Entities.PaymentTransaction", b =>
                 {
-                    b.Navigation("OrderIds");
+                    b.Navigation("Orders");
                 });
 #pragma warning restore 612, 618
         }

@@ -91,7 +91,7 @@ namespace OrderService.Api.Controllers
                     return Ok(new
                     {
                         Message = "Đơn hàng COD đã được tạo thành công.",
-                        OrderIds = paymentTx.OrderIds.Select(o => o.Id).ToList()
+                        OrderIds = paymentTx.Orders.Select(o => o.Id).ToList()
                     });
                 }
 
@@ -103,7 +103,7 @@ namespace OrderService.Api.Controllers
                     PaymentUrl = paymentTx.PaymentUrl,          // ✅ Correct: Lấy từ paymentTx
                     TransactionId = paymentTx.TransactionId,    // ✅ Correct: Lấy từ paymentTx
                     PaymentStatus = paymentTx.PaymentStatus.ToString(),
-                    OrderIds = paymentTx.OrderIds.Select(o => o.Id).ToList()
+                    OrderIds = paymentTx.Orders.Select(o => o.Id).ToList()
                 });
             }
             catch (ArgumentException ex)

@@ -14,6 +14,7 @@ using OrderService.Infracstructure.DBContext;
 using OrderService.Infracstructure.Repositories;
 using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
+using OrderService.Application.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
@@ -47,6 +48,8 @@ builder.Services.AddScoped<IOrderServices, OrderServices>();
 builder.Services.AddScoped<OrderRepository>();
 builder.Services.AddScoped<OrderItemRepository>();
 builder.Services.AddScoped<ICacheService, RedisCacheService>();
+builder.Services.Configure<VNPayConfig>(
+    builder.Configuration.GetSection("VNPaySettings"));
 
 
 // 3. JWT
@@ -106,8 +109,7 @@ builder.Services.AddHttpClient<ICartClient, CartClient>(client =>
 });
 
 // Payment service: mock for now
-builder.Services.AddScoped<IPaymentService, MockPaymentService>();
-
+builder.Services.AddScoped<IPaymentService, VNPayService>(); // Thay thế MockService
 builder.Services.AddAutoMapper(typeof(OrderMappingProfile).Assembly);
 
 builder.Services.AddSwaggerGen(c =>

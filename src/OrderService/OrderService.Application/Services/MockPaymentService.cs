@@ -40,7 +40,12 @@ namespace OrderService.Application.Services.Payment
 
         public Task<bool> CheckTransactionStatusAsync(string transactionId)
         {
-            throw new NotImplementedException();
+            if (string.IsNullOrEmpty(transactionId)) return Task.FromResult(false);
+
+            // Giả lập trạng thái đã thanh toán nếu TransactionId kết thúc bằng một chữ số chẵn
+            var isPaid = (transactionId.GetHashCode() % 10) < 9;
+
+            return Task.FromResult(isPaid);
         }
     }
 }
