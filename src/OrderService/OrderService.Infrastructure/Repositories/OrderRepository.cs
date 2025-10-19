@@ -10,7 +10,7 @@ namespace OrderService.Infracstructure.Repositories
         public OrderRepository(OrderDbContext context) : base(context) { }
 
         // ======================= PRIVATE HELPERS ======================= //
-        private async Task<bool> UpdateOrderFieldAsync(Guid orderId, Action<Order> updateAction)
+        private async Task<bool> UpdateOrderFieldAsync(int orderId, Action<Order> updateAction)
         {
             var order = await _dbSet.FirstOrDefaultAsync(o => o.Id == orderId);
             if (order == null) return false;
@@ -31,7 +31,7 @@ namespace OrderService.Infracstructure.Repositories
         }
 
 
-        public async Task<Order?> GetByIdAsync(Guid id)
+        public async Task<Order?> GetByIdAsync(int id)
         {
             return await _dbSet
                 .Include(o => o.OrderItems)
@@ -79,19 +79,19 @@ namespace OrderService.Infracstructure.Repositories
         }
 
         // ======================= UPDATE FIELDS ======================= //
-        public Task<bool> UpdateOrderStatusAsync(Guid orderId, OrderStatus status)
+        public Task<bool> UpdateOrderStatusAsync(int orderId, OrderStatus status)
             => UpdateOrderFieldAsync(orderId, o => o.OrderStatus = status);
 
-        public Task<bool> UpdatePaymentStatusAsync(Guid orderId, PaymentStatus status)
+        public Task<bool> UpdatePaymentStatusAsync(int orderId, PaymentStatus status)
             => UpdateOrderFieldAsync(orderId, o => o.PaymentStatus = status);
 
-        public Task<bool> UpdatePaymentProviderAsync(Guid orderId, PaymentProvider provider)
+        public Task<bool> UpdatePaymentProviderAsync(int orderId, PaymentProvider provider)
             => UpdateOrderFieldAsync(orderId, o => o.PaymentProvider = provider);
 
-        public Task<bool> UpdatePaymentMethodAsync(Guid orderId, PaymentMethod method)
+        public Task<bool> UpdatePaymentMethodAsync(int orderId, PaymentMethod method)
             => UpdateOrderFieldAsync(orderId, o => o.PaymentMethod = method);
 
-        public Task<bool> UpdateDeliveredDateAsync(Guid orderId, DateTime deliveredDate)
+        public Task<bool> UpdateDeliveredDateAsync(int orderId, DateTime deliveredDate)
             => UpdateOrderFieldAsync(orderId, o => o.DeliveriedDate = deliveredDate);
     }
 }

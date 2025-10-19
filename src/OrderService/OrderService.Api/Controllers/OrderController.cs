@@ -45,7 +45,7 @@ namespace OrderService.Api.Controllers
         }
 
         [HttpGet("{id:guid}")]
-        public async Task<IActionResult> GetById(Guid id)
+        public async Task<IActionResult> GetById(int id)
         {
             var order = await _service.GetById(id);
             return order is null ? NotFound() : Ok(order);
@@ -121,7 +121,7 @@ namespace OrderService.Api.Controllers
         // 🔹 POST: Khởi tạo thanh toán (Đơn hàng đơn lẻ)
         // ==========================
         [HttpPost("{id:guid}/payment/initiate")]
-        public async Task<IActionResult> InitiatePayment(Guid id)
+        public async Task<IActionResult> InitiatePayment(int id)
         {
             try
             {
@@ -168,7 +168,7 @@ namespace OrderService.Api.Controllers
         }
 
         [HttpPut("{id:guid}/cancel")]
-        public async Task<IActionResult> Cancel(Guid id)
+        public async Task<IActionResult> Cancel(int id)
         {
             return Ok(new { message = "Cancel logic needs implementation." });
         }
@@ -177,7 +177,7 @@ namespace OrderService.Api.Controllers
         // 🔹 POST: Kiểm tra trạng thái thanh toán (Polling)
         // ==========================
         [HttpPost("{orderId:guid}/payment/check-status")]
-        public async Task<IActionResult> CheckPaymentStatus(Guid orderId)
+        public async Task<IActionResult> CheckPaymentStatus(int orderId)
         {
             var order = await _service.GetById(orderId);
             if (order == null) return NotFound();

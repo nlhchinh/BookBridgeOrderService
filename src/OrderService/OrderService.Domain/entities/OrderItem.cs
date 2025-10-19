@@ -11,7 +11,7 @@ namespace OrderService.Domain.Entities
         public Guid Id { get; set; }
 
         [Required]
-        public Guid OrderId { get; set; }  // Foreign key đến Order
+        public int OrderId { get; set; }  // Foreign key đến Order
 
         [Required]
         public int BookId { get; set; }   // Foreign key đến Book

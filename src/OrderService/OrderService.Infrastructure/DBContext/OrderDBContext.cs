@@ -22,10 +22,14 @@ namespace OrderService.Infracstructure.DBContext
 
             modelBuilder.Entity<Order>(entity =>
             {
+                entity.Property(o => o.Id)
+                      .ValueGeneratedOnAdd();
+
                 entity.Property(o => o.TotalPrice).HasColumnType("decimal(18,2)");
                 entity.HasMany(o => o.OrderItems)
                       .WithOne(oi => oi.Order)
                       .HasForeignKey(oi => oi.OrderId)
+                      .IsRequired(true)
                       .OnDelete(DeleteBehavior.Cascade);
 
                 // Cấu hình mối quan hệ 1-n (PaymentTransaction-Order)

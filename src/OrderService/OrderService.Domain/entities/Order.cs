@@ -9,7 +9,7 @@ namespace OrderService.Domain.Entities
     public class Order
     {
         [Key]
-        public Guid Id { get; set; }
+        public int Id { get; set; }
 
         public Guid CustomerId { get; set; }
 
