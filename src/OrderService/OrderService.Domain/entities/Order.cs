@@ -48,7 +48,6 @@ namespace OrderService.Domain.Entities
         [Required]
         public PaymentStatus PaymentStatus { get; set; }
 
-        [Required]
         public PaymentProvider? PaymentProvider { get; set; }
 
 
