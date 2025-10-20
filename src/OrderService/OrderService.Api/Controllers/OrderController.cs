@@ -58,6 +58,30 @@ namespace OrderService.Api.Controllers
             return Ok(result);
         }
 
+        // API mới: Lấy order theo OrderStatus
+        // Sử dụng query parameter để truyền OrderStatus (ví dụ: ?status=Confirmed)
+        // Cần đảm bảo enum OrderStatus có thể được convert từ string
+        [HttpGet("by-status")]
+        public async Task<IActionResult> GetByStatus([FromQuery] OrderStatus status, int page = 1, int pageSize = 10)
+        {
+            if (!Enum.IsDefined(typeof(OrderStatus), status))
+            {
+                return BadRequest("Trạng thái đơn hàng không hợp lệ.");
+            }
+
+            var result = await _service.GetOrderByStatus(status, page, pageSize);
+            return Ok(result);
+        }
+
+        // Lấy order theo BookstoreId
+        [HttpGet("by-bookstore/{bookstoreId:guid}")]
+        [Authorize(Roles = "Admin,Seller")] // Admin/Seller mới có quyền truy vấn theo BookstoreId
+        public async Task<IActionResult> GetByBookstore(int bookstoreId, int page = 1, int pageSize = 10)
+        {
+            var result = await _service.GetOrderByBookstore(bookstoreId, page, pageSize);
+            return Ok(result);
+        }
+
         [HttpPost("create")]
         public async Task<IActionResult> Create([FromBody] OrderCreateRequest request)
         {

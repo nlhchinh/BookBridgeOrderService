@@ -25,5 +25,10 @@ namespace OrderService.Application.Interface
 
         // THÊM: Method để cập nhật trạng thái sau khi user quét QR (có thể dùng để poll)
         Task<bool> UpdatePaymentStatusAfterScan(int orderId);
+
+        Task<PagedResult<Order>> GetOrderByStatus(OrderStatus status, int pageNo, int pageSize);
+
+        // Lấy order theo BookstoreId
+        Task<PagedResult<Order>> GetOrderByBookstore(int bookstoreId, int pageNo, int pageSize);
     }
 }

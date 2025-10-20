@@ -65,6 +65,32 @@ namespace OrderService.Application.Services
             return PagedResult<Order>.Create(list, pageNo, pageSize);
         }
 
+        // Phương thức mới: Lấy order theo OrderStatus
+        public async Task<PagedResult<Order>> GetOrderByStatus(OrderStatus status, int pageNo, int pageSize)
+        {
+            var query = _orderDbContext.Orders
+                .Include(o => o.OrderItems)
+                .Where(o => o.OrderStatus == status)
+                .AsNoTracking()
+                .OrderByDescending(o => o.OrderDate);
+
+            var list = await query.ToListAsync();
+            return PagedResult<Order>.Create(list, pageNo, pageSize);
+        }
+
+        // Phương thức mới: Lấy order theo BookstoreId
+        public async Task<PagedResult<Order>> GetOrderByBookstore(int bookstoreId, int pageNo, int pageSize)
+        {
+            var query = _orderDbContext.Orders
+                .Include(o => o.OrderItems)
+                .Where(o => o.BookstoreId == bookstoreId)
+                .AsNoTracking()
+                .OrderByDescending(o => o.OrderDate);
+
+            var list = await query.ToListAsync();
+            return PagedResult<Order>.Create(list, pageNo, pageSize);
+        }
+
         public async Task<Order> Create(OrderCreateRequest request)
         {
             // Bắt buộc COD (theo yêu cầu hiện tại)
